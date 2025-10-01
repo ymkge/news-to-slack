@@ -62,7 +62,7 @@ graph TD
     プロジェクトのルートディレクトリに `.env` ファイルを作成し、以下のようにご自身のGemini APIキーを設定してください。
 
     ```
-    GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+    VITE_GEMINI_API_KEY=YOUR_GEMINI_API_KEY
     ```
 
 3.  **開発サーバーの起動:**
