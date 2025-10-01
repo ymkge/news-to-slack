@@ -1,0 +1,5 @@
+{
+  "name": "AI ETL Agent: News to Slack",
+  "description": "An application that simulates an AI agent performing an ETL (Extract, Transform, Load) process. It fetches mock news data, uses the Gemini API to analyze and format it, and then simulates posting the result to Slack.",
+  "requestFramePermissions": []
+}
