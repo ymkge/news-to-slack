@@ -73,8 +73,6 @@ graph TD
     GEMINI_API_KEY=YOUR_GEMINI_API_KEY
     SLACK_WEBHOOK_URL=YOUR_SLACK_WEBHOOK_URL
     ```
-    
-    フロントエンドの`.env`ファイルと`VITE_GEMINI_API_KEY`は不要になりました。
 
 3.  **開発サーバーの起動:**
     **2つのターミナル**で、それぞれフロントエンドとバックエンドのサーバーを起動します。
