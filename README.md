@@ -12,9 +12,9 @@ AI Studioでこのアプリを見る: https://ai.studio/apps/drive/11Vwu7xVOHsMm
 
 「Run ETL Process」ボタンをクリックすると、以下の処理が実行され、各ステップの進捗と結果がリアルタイムで画面に表示されます。
 
-1.  **Extract (抽出)**: Yahoo!ニュースから最新のトップニュース5件を模擬的に取得します。
+1.  **Extract (抽出)**: Yahoo!ニュースのRSSフィードから最新のトップニュース5件を**動的に取得**します。
 2.  **Transform (変換)**: Google Gemini API を利用して、取得したニュース記事を分析し、「トピック分類」と「内容の要約」を生成します。
-3.  **Load (書き出し)**: 分析結果をSlackのメッセージ形式に整形し、Slackへの投稿をシミュレートします。
+3.  **Load (書き出し)**: 分析結果をSlackのメッセージ形式に整形し、**実際にSlackチャンネルに投稿**します。
 
 ## 処理フロー
 
@@ -25,9 +25,9 @@ graph TD
     end
 
     subgraph "ETLプロセス"
-        B["1. Extract (抽出)<br>Yahoo!ニュースの記事を取得 (Mock)"]
+        B["1. Extract (抽出)<br>Yahoo!ニュースのRSSフィードから記事を取得"]
         C["2. Transform (変換)<br>Gemini AIで記事を分析・要約"]
-        D["3. Load (書き出し)<br>Slackメッセージを生成・投稿 (Simulate)"]
+        D["3. Load (書き出し)<br>Slackメッセージを生成・投稿"]
     end
 
     subgraph "結果"
@@ -66,11 +66,12 @@ graph TD
     ```
 
 2.  **APIキーの設定:**
-    `server`ディレクトリに `.env` ファイルを作成し、以下のようにご自身のGemini APIキーを設定してください。
+    `server`ディレクトリに `.env` ファイルを作成し、以下のようにご自身のGemini APIキーとSlack Webhook URLを設定してください。
     
     ```sh
     # server/.env
     GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+    SLACK_WEBHOOK_URL=YOUR_SLACK_WEBHOOK_URL
     ```
     
     フロントエンドの`.env`ファイルと`VITE_GEMINI_API_KEY`は不要になりました。
@@ -110,6 +111,9 @@ graph TD
   - Geminiが生成したメッセージを、設定されたSlack Webhook URLへ実際に投稿するように `server/src/index.ts` を修正しました。
 - **ドキュメント更新:**
   - ローカルでの実行方法（`README.md`）を、現在のフロントエンド＋バックエンドの構成に合わせて更新しました。
+- **コードのリファクタリング:**
+  - `server/src/constants.ts` から不要なモックデータを削除しました。
+  - `server/src/index.ts` および `services/geminiService.ts` の冗長なログやコメントを整理し、コードを簡潔にしました。
 
 ### 完了したタスク (2025-10-09)
 
@@ -119,8 +123,3 @@ graph TD
 ### 次のステップ (Next Steps)
 
 -   すべての主要な「次のステップ」タスクが完了しました。
-    -   [x] **Extract:** ニュース記事を動的に取得する処理を実装する (RSSフィードの解析など)。
-    -   [x] **Load:** Slackへ実際に投稿する処理を実装する。
-    -   [x] **環境変数の整備:** `server/.env` ファイルに `SLACK_WEBHOOK_URL` などの必要な情報を設定する。
-    -   [x] **フロントエンドの改修:** フロントエンドからバックエンドのAPIを呼び出すように、`App.tsx` や `geminiService.ts` を修正する。
-    -   [x] **バックエンドの機能強化:** Gemini API を呼び出す処理をバックエンドに移設する。

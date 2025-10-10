@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { runEtlProcess } from './services/geminiService';
 import { EtlStep, ProcessStatus } from './types';
@@ -106,7 +105,7 @@ const App: React.FC = () => {
             <ProcessStepCard
               icon={<ExtractIcon />}
               title="1. Extract"
-              description="Fetch top 5 news articles from Yahoo! News (mocked)."
+              description="Fetch top 5 news articles from Yahoo! News RSS feed."
               status={statuses.extract}
               content={getStepContent('extract')}
               contentType="json"
@@ -122,7 +121,7 @@ const App: React.FC = () => {
             <ProcessStepCard
               icon={<LoadIcon />}
               title="3. Load"
-              description="Format the analysis into a Slack message and simulate posting."
+              description="Format the analysis into a Slack message and post it to Slack."
               status={statuses.load}
               content={getStepContent('load')}
               contentType="text"
