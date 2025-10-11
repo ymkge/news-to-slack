@@ -4,6 +4,9 @@ import cors from 'cors';
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import Parser from 'rss-parser';
 import fetch from 'node-fetch';
+import fs from 'fs/promises';
+import path from 'path';
+import crypto from 'crypto';
 
 import {
   SYSTEM_INSTRUCTION,
@@ -11,14 +14,42 @@ import {
   yahooNewsApiTool,
   slackPosterTool,
 } from './constants';
+import { NewsSource } from './types';
 
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3001;
 
+const DB_PATH = path.join(__dirname, '..', 'db.json');
+
 app.use(cors()); 
 app.use(express.json());
+
+// --- DB Utility Functions ---
+async function readDb(): Promise<{ newsSources: NewsSource[] }> {
+  try {
+    const data = await fs.readFile(DB_PATH, 'utf-8');
+    return JSON.parse(data);
+  } catch (e) {
+    // If file doesn't exist, return default structure
+    if (typeof e === 'object' && e !== null && 'code' in e && e.code === 'ENOENT') {
+      return { newsSources: [] };
+    }
+    console.error('Failed to read from DB:', e);
+    throw e;
+  }
+}
+
+async function writeDb(data: { newsSources: NewsSource[] }) {
+  try {
+    await fs.writeFile(DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (error) {
+    console.error('Failed to write to DB:', error);
+    throw error;
+  }
+}
+
 
 // --- Gemini AI Initialization ---
 if (!process.env.GEMINI_API_KEY) {
@@ -31,24 +62,43 @@ const model = "gemini-2.5-flash";
 const parser = new Parser();
 
 /**
- * Fetches news from Yahoo! News RSS feed and formats it.
+ * Fetches news from all registered RSS feeds and formats them.
  * @returns Formatted news data.
  */
-async function fetchYahooNews() {
-  const YAHOO_NEWS_RSS_URL = 'https://news.yahoo.co.jp/rss/topics/top-picks.xml';
+async function fetchAllNews() {
   try {
-    const feed = await parser.parseURL(YAHOO_NEWS_RSS_URL);
-    const newsItems = feed.items.slice(0, 5).map(item => ({
-      title: item.title || 'No Title',
-      url: item.link || '#',
-      snippet: item.contentSnippet?.substring(0, 100) + '...' || 'No snippet available.',
-    }));
-    return { news: newsItems };
+    const { newsSources } = await readDb();
+    if (newsSources.length === 0) {
+      console.warn("No news sources configured.");
+      return { news: [] };
+    }
+
+    const allNewsPromises = newsSources.map(async (source) => {
+      try {
+        const feed = await parser.parseURL(source.url);
+        return feed.items.slice(0, 5).map(item => ({
+          title: item.title || 'No Title',
+          url: item.link || '#',
+          snippet: item.contentSnippet?.substring(0, 100) + '...' || 'No snippet available.',
+        }));
+      } catch (error) {
+        console.error(`Failed to fetch RSS feed from ${source.name} (${source.url}):`, error);
+        return []; // Return empty array on error for this source
+      }
+    });
+
+    const results = await Promise.allSettled(allNewsPromises);
+    const allNewsItems = results
+      .filter(result => result.status === 'fulfilled')
+      .flatMap(result => (result as PromiseFulfilledResult<any[]>).value);
+
+    return { news: allNewsItems };
   } catch (error) {
-    console.error('Failed to fetch Yahoo News RSS:', error);
-    throw new Error('Failed to fetch Yahoo News.');
+    console.error('Failed to fetch news from DB or RSS feeds:', error);
+    throw new Error('Failed to fetch news.');
   }
 }
+
 
 /**
  * Posts a message to Slack using a webhook URL.
@@ -87,6 +137,49 @@ app.get('/api', (req, res) => {
   res.send('Hello from backend!');
 });
 
+// --- News Sources API ---
+app.get('/api/news-sources', async (req, res) => {
+  try {
+    const db = await readDb();
+    res.json(db.newsSources);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve news sources.' });
+  }
+});
+
+app.post('/api/news-sources', async (req, res) => {
+  try {
+    const { name, url } = req.body;
+    if (!name || !url) {
+      return res.status(400).json({ error: 'Name and URL are required.' });
+    }
+    const db = await readDb();
+    const newSource: NewsSource = { id: crypto.randomUUID(), name, url };
+    db.newsSources.push(newSource);
+    await writeDb(db);
+    res.status(201).json(newSource);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to add new source.' });
+  }
+});
+
+app.delete('/api/news-sources/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = await readDb();
+    const initialLength = db.newsSources.length;
+    db.newsSources = db.newsSources.filter(source => source.id !== id);
+    if (db.newsSources.length === initialLength) {
+        return res.status(404).json({ error: 'News source not found.' });
+    }
+    await writeDb(db);
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete news source.' });
+  }
+});
+
+
 /**
  * Endpoint to run the main ETL process.
  * It orchestrates the calls to the Gemini API to perform the Extract, Transform, and Load steps.
@@ -112,13 +205,13 @@ app.post('/api/run-etl', async (req, res) => {
     }
 
     // === Part 2: Fetch real news and send data back to the model ===
-    const yahooNewsData = await fetchYahooNews();
+    const newsData = await fetchAllNews();
     
     const functionResponsePart = {
         functionResponse: {
           name: 'YahooNewsAPI',
           response: {
-            content: JSON.stringify(yahooNewsData),
+            content: JSON.stringify(newsData),
           },
         },
       };
@@ -152,7 +245,7 @@ app.post('/api/run-etl', async (req, res) => {
     await postToSlack(slackMessage);
 
     res.json({
-      extract: yahooNewsData,
+      extract: newsData,
       transform: {
         description: "Gemini has analyzed the news and generated the final Slack message.",
         functionCall: secondFunctionCall
