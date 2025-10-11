@@ -63,36 +63,39 @@ const parser = new Parser();
 
 /**
  * Fetches news from all registered RSS feeds and formats them.
- * @returns Formatted news data.
+ * @returns Formatted news data and a list of sources that failed to fetch.
  */
 async function fetchAllNews() {
   try {
     const { newsSources } = await readDb();
     if (newsSources.length === 0) {
       console.warn("No news sources configured.");
-      return { news: [] };
+      return { news: [], failedSources: [] };
     }
 
-    const allNewsPromises = newsSources.map(async (source) => {
-      try {
-        const feed = await parser.parseURL(source.url);
-        return feed.items.slice(0, 5).map(item => ({
+    const allNewsPromises = newsSources.map(source => parser.parseURL(source.url));
+    const results = await Promise.allSettled(allNewsPromises);
+
+    const allNewsItems: any[] = [];
+    const failedSources: { name: string; url: string }[] = [];
+
+    results.forEach((result, index) => {
+      const source = newsSources[index];
+      if (result.status === 'fulfilled') {
+        const feed = result.value;
+        const newsItems = feed.items.slice(0, 5).map(item => ({
           title: item.title || 'No Title',
           url: item.link || '#',
           snippet: item.contentSnippet?.substring(0, 100) + '...' || 'No snippet available.',
         }));
-      } catch (error) {
-        console.error(`Failed to fetch RSS feed from ${source.name} (${source.url}):`, error);
-        return []; // Return empty array on error for this source
+        allNewsItems.push(...newsItems);
+      } else {
+        console.error(`Failed to fetch RSS feed from ${source.name} (${source.url}):`, result.reason);
+        failedSources.push({ name: source.name, url: source.url });
       }
     });
 
-    const results = await Promise.allSettled(allNewsPromises);
-    const allNewsItems = results
-      .filter(result => result.status === 'fulfilled')
-      .flatMap(result => (result as PromiseFulfilledResult<any[]>).value);
-
-    return { news: allNewsItems };
+    return { news: allNewsItems, failedSources };
   } catch (error) {
     console.error('Failed to fetch news from DB or RSS feeds:', error);
     throw new Error('Failed to fetch news.');
