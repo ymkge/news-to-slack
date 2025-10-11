@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NewsSource } from '../types';
-
-const API_URL = 'http://localhost:3001/api';
+import { getAllNewsSources, createNewsSource, deleteNewsSource } from '../services/newsSourceService';
 
 const NewsSourceManager: React.FC = () => {
   const [sources, setSources] = useState<NewsSource[]>([]);
@@ -10,26 +9,22 @@ const NewsSourceManager: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    fetchSources();
-  }, []);
-
-  const fetchSources = async () => {
+  const fetchSources = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${API_URL}/news-sources`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch news sources.');
-      }
-      const data: NewsSource[] = await response.json();
+      const data = await getAllNewsSources();
       setSources(data);
       setError(null);
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchSources();
+  }, [fetchSources]);
 
   const handleAddSource = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,25 +34,13 @@ const NewsSourceManager: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${API_URL}/news-sources`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name: newName, url: newUrl }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to add news source.');
-      }
-
-      const newSource = await response.json();
+      const newSource = await createNewsSource(newName, newUrl);
       setSources([...sources, newSource]);
       setNewName('');
       setNewUrl('');
       setError(null);
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
     }
   };
 
@@ -67,18 +50,11 @@ const NewsSourceManager: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${API_URL}/news-sources/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete news source.');
-      }
-
+      await deleteNewsSource(id);
       setSources(sources.filter(source => source.id !== id));
       setError(null);
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
     }
   };
 

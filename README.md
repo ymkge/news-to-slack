@@ -12,34 +12,42 @@ AI Studioでこのアプリを見る: https://ai.studio/apps/drive/11Vwu7xVOHsMm
 
 「Run ETL Process」ボタンをクリックすると、以下の処理が実行され、各ステップの進捗と結果がリアルタイムで画面に表示されます。
 
-1.  **Extract (抽出)**: Yahoo!ニュースのRSSフィードから最新のトップニュース5件を**動的に取得**します。
+1.  **Extract (抽出)**: **登録されたRSSフィードからニュース記事を取得**します。
 2.  **Transform (変換)**: Google Gemini API を利用して、取得したニュース記事を分析し、「トピック分類」と「内容の要約」を生成します。
 3.  **Load (書き出し)**: 分析結果をSlackのメッセージ形式に整形し、**実際にSlackチャンネルに投稿**します。
+
+## 機能
+
+-   **ニュースソース管理**: Web UIからRSSフィードのURLを登録・削除できます。
+-   **ETLプロセス実行**: 登録されたRSSフィードからニュースを取得し、Gemini AIで処理後、Slackに投稿します。
+-   **エラーハンドリング**: 無効なRSSフィードが登録されている場合、Extract処理でエラーを検出し、処理を中断して画面にエラーメッセージを表示します。
 
 ## 処理フロー
 
 ```mermaid
 graph TD
     subgraph "ユーザー操作"
-        A("「Run ETL Process」ボタンをクリック")
+        A("「Manage News Sources」でRSSフィードを登録")
+        B("「Run ETL Process」ボタンをクリック")
     end
 
     subgraph "ETLプロセス"
-        B["1. Extract (抽出)<br>Yahoo!ニュースのRSSフィードから記事を取得"]
-        C["2. Transform (変換)<br>Gemini AIで記事を分析・要約"]
-        D["3. Load (書き出し)<br>Slackメッセージを生成・投稿"]
+        C["1. Extract (抽出)<br>登録されたRSSフィードから記事を取得"]
+        D["2. Transform (変換)<br>Gemini AIで記事を分析・要約"]
+        E["3. Load (書き出し)<br>Slackメッセージを生成・投稿"]
     end
 
     subgraph "結果"
-        E("UIに進捗と結果を表示")
+        F("UIに進捗と結果を表示")
     end
 
-    A --> B --> C --> D --> E
+    A --> B --> C --> D --> E --> F
 ```
 
 ## 主な使用技術
 
 -   **フロントエンド**: React, TypeScript
+-   **バックエンド**: Node.js (Express), TypeScript
 -   **ビルドツール**: Vite
 -   **AI**: Google Gemini API (`@google/genai`)
 -   **UI**: Tailwind CSS
@@ -50,6 +58,7 @@ graph TD
 
 -   [Node.js](https://nodejs.org/) がインストールされていること。
 -   Google Gemini API キーを取得していること。
+-   Slack Webhook URL を取得していること。
 
 **手順:**
 
@@ -62,10 +71,11 @@ graph TD
     # バックエンド
     cd server
     npm install
+    npm install -D tsconfig-paths # tsconfig-paths のインストールも必要です
     cd ..
     ```
 
-2.  **APIキーの設定:**
+2.  **APIキーとWebhook URLの設定:**
     `server`ディレクトリに `.env` ファイルを作成し、以下のようにご自身のGemini APIキーとSlack Webhook URLを設定してください。
     
     ```sh
@@ -87,6 +97,7 @@ graph TD
     cd server
     npm run dev
     ```
+    **注意**: バックエンドの `npm run dev` コマンドは、`tsconfig-paths` を使用するため、`nodemon --exec ts-node -r tsconfig-paths/register src/index.ts` となります。
 
 4.  ブラウザで `http://localhost:5173` （またはターミナル1に表示されたアドレス）にアクセスすると、アプリケーションが表示されます。
 
@@ -95,6 +106,16 @@ graph TD
 ## 開発メモ (Development Memo)
 
 開発の進捗と計画を記録するためのメモです。
+
+### 完了したタスク (2025-10-11)
+
+-   **ニュースソース管理機能の追加**: Web UIからRSSフィードのURLを登録・削除できるようになりました。
+-   **UI改善**: 「Add Source」ボタンの視認性を向上させました。
+-   **エラーハンドリング強化**: 無効なRSSフィードが登録された場合、Extract処理でエラーを検出し、処理を中断して画面にエラーメッセージを表示するようになりました。
+-   **コードのリファクタリング**: 
+    -   サーバーサイドのロジックを `services` と `routes` ディレクトリに分割し、`index.ts` をクリーンにしました。
+    -   フロントエンドのAPI呼び出しロジックを `services/newsSourceService.ts` に分離しました。
+    -   サーバーとフロントエンドで重複していた型定義をプロジェクトルートの `types.ts` に統合し、`tsconfig.json` の `paths` エイリアスを使って参照するようにしました。
 
 ### 完了したタスク (2025-10-10)
 
@@ -117,7 +138,3 @@ graph TD
 
 - **バックエンドサーバーの導入:**
   - セキュリティ強化と将来の機能拡張のため、Node.js (Express + TypeScript) を使用したバックエンドサーバーの雛形を `server` ディレクトリに構築しました。
-
-### 次のステップ (Next Steps)
-
--   すべての主要な「次のステップ」タスクが完了しました。
