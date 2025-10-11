@@ -94,14 +94,14 @@ const NewsSourceManager: React.FC = () => {
               placeholder="Source Name (e.g., Google News)"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              style={{ width: '300px', marginRight: '0.5rem' }}
+              style={{ width: '300px', marginRight: '0.5rem', color: '#333' }}
             />
             <input
               type="url"
               placeholder="RSS Feed URL"
               value={newUrl}
               onChange={(e) => setNewUrl(e.target.value)}
-              style={{ width: '400px', marginRight: '0.5rem' }}
+              style={{ width: '400px', marginRight: '0.5rem', color: '#333' }}
             />
         </div>
         <button type="submit">Add Source</button>
