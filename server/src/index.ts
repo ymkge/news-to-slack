@@ -63,13 +63,12 @@ const parser = new Parser();
 
 /**
  * Fetches news from all registered RSS feeds and formats them.
- * Throws an error if any of the RSS feeds fail to parse.
+ * Throws an error if any of the RSS feeds fail to parse or are invalid.
  * @returns Formatted news data.
  */
 async function fetchAllNews() {
   const { newsSources } = await readDb();
   if (newsSources.length === 0) {
-    console.warn("No news sources configured.");
     return { news: [] };
   }
 
@@ -78,6 +77,12 @@ async function fetchAllNews() {
   for (const source of newsSources) {
     try {
       const feed = await parser.parseURL(source.url);
+      
+      // Add a check to ensure the feed and its items are valid
+      if (!feed || !Array.isArray(feed.items)) {
+        throw new Error('Invalid or empty RSS feed structure returned.');
+      }
+
       const newsItems = feed.items.slice(0, 5).map(item => ({
         title: item.title || 'No Title',
         url: item.link || '#',
@@ -85,9 +90,9 @@ async function fetchAllNews() {
       }));
       allNewsItems.push(...newsItems);
     } catch (error) {
-      console.error(`Failed to fetch RSS feed from ${source.name} (${source.url}):`, error);
-      // Throw an error to stop the entire ETL process
-      throw new Error(`Failed to fetch news from "${source.name}" (${source.url}). Please check if the URL is a valid RSS feed.`);
+      const originalErrorMessage = error instanceof Error ? error.message : 'Unknown error';
+      // Throw an error to stop the entire ETL process, including the original reason
+      throw new Error(`Failed to process feed from "${source.name}" (${source.url}). Reason: ${originalErrorMessage}. Please check if the URL is a valid RSS feed.`);
     }
   }
 
@@ -201,6 +206,12 @@ app.post('/api/run-etl', async (req, res) => {
 
     // === Part 2: Fetch real news and send data back to the model ===
     const newsData = await fetchAllNews();
+
+    // If sources are configured but no articles were fetched, it's an error.
+    const { newsSources } = await readDb();
+    if (newsSources.length > 0 && (!newsData || newsData.news.length === 0)) {
+        throw new Error('No news articles could be fetched from the configured sources. Please check the RSS feed URLs and ensure they are not empty or invalid.');
+    }
     
     const functionResponsePart = {
         functionResponse: {
@@ -249,7 +260,6 @@ app.post('/api/run-etl', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error during ETL process:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during the ETL process.';
     res.status(500).json({ error: errorMessage });
   }

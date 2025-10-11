@@ -104,7 +104,12 @@ const NewsSourceManager: React.FC = () => {
               style={{ width: '400px', marginRight: '0.5rem', color: '#333' }}
             />
         </div>
-        <button type="submit">Add Source</button>
+        <button 
+          type="submit"
+          className="px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 transition-all duration-300"
+        >
+          Add Source
+        </button>
       </form>
 
       {isLoading ? (
@@ -116,7 +121,13 @@ const NewsSourceManager: React.FC = () => {
               <span>
                 <strong>{source.name}</strong>: <small>{source.url}</small>
               </span>
-              <button onClick={() => handleDeleteSource(source.id)}>&times;</button>
+              <button 
+                onClick={() => handleDeleteSource(source.id)}
+                className="px-2 py-1 text-red-400 hover:text-red-200"
+                title="Delete Source"
+              >
+                &times;
+              </button>
             </li>
           ))}
         </ul>
