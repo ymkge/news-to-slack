@@ -3,6 +3,7 @@ import { runEtlProcess } from './services/geminiService';
 import { EtlStep, ProcessStatus } from './types';
 import ProcessStepCard from './components/ProcessStepCard';
 import { ExtractIcon, TransformIcon, LoadIcon, ZapIcon, AlertTriangleIcon } from './components/icons';
+import NewsSourceManager from './components/NewsSourceManager';
 
 const App: React.FC = () => {
   const [statuses, setStatuses] = useState<Record<EtlStep, ProcessStatus>>({
@@ -67,10 +68,14 @@ const App: React.FC = () => {
           <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
             AI ETL Agent
           </h1>
-          <p className="mt-2 text-lg text-slate-400">Yahoo! News Headlines → Gemini AI Analysis → Slack Post</p>
+          <p className="mt-2 text-lg text-slate-400">RSS Feeds → Gemini AI Analysis → Slack Post</p>
         </header>
 
         <main>
+          <div className="mb-8">
+            <NewsSourceManager />
+          </div>
+
           <div className="flex justify-center mb-8">
             <button
               onClick={handleRunProcess}
@@ -105,7 +110,7 @@ const App: React.FC = () => {
             <ProcessStepCard
               icon={<ExtractIcon />}
               title="1. Extract"
-              description="Fetch top 5 news articles from Yahoo! News RSS feed."
+              description="Fetch news articles from configured RSS feeds."
               status={statuses.extract}
               content={getStepContent('extract')}
               contentType="json"

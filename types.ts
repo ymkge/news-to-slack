@@ -12,3 +12,9 @@ export interface NewsArticle {
 export interface MockApiResponse {
   news: NewsArticle[];
 }
+
+export interface NewsSource {
+  id: string;
+  name: string;
+  url:string;
+}
