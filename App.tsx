@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { runEtlProcess } from './services/geminiService';
-import { EtlStep, ProcessStatus, NewsSource } from './types';
+import { EtlStep, ProcessStatus } from './types';
 import ProcessStepCard from './components/ProcessStepCard';
 import { ExtractIcon, TransformIcon, LoadIcon, ZapIcon, AlertTriangleIcon } from './components/icons';
 import NewsSourceManager from './components/NewsSourceManager';
@@ -18,12 +18,10 @@ const App: React.FC = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [failedSources, setFailedSources] = useState<Partial<NewsSource>[]>([]);
 
   const handleRunProcess = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    setFailedSources([]);
     setStatuses({ extract: 'pending', transform: 'pending', load: 'pending' });
     setData({ extract: null, transform: null, load: null });
 
@@ -32,9 +30,6 @@ const App: React.FC = () => {
         setStatuses(prev => ({ ...prev, [step]: status }));
         if (stepData) {
           setData(prev => ({ ...prev, [step]: stepData }));
-          if (step === 'extract' && stepData.failedSources && stepData.failedSources.length > 0) {
-            setFailedSources(stepData.failedSources);
-          }
         }
       });
     } catch (err) {
@@ -108,21 +103,6 @@ const App: React.FC = () => {
             <div className="bg-red-900/50 border border-red-500 text-red-300 px-4 py-3 rounded-lg relative mb-6 flex items-center gap-3">
                <AlertTriangleIcon className="h-5 w-5 text-red-400" />
               <span className="block sm:inline">{error}</span>
-            </div>
-          )}
-
-          {failedSources.length > 0 && (
-            <div className="bg-yellow-900/50 border border-yellow-500 text-yellow-300 px-4 py-3 rounded-lg relative mb-6">
-              <h3 className="font-bold flex items-center gap-2">
-                <AlertTriangleIcon className="h-5 w-5 text-yellow-400" />
-                Fetch Warning
-              </h3>
-              <p className="mt-2">The following news sources could not be fetched. Please check if the RSS feed URLs are correct:</p>
-              <ul className="mt-2 list-disc list-inside">
-                {failedSources.map((source, index) => (
-                  <li key={index}>{source.name}: <code>{source.url}</code></li>
-                ))}
-              </ul>
             </div>
           )}
 

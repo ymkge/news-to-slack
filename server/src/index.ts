@@ -63,43 +63,35 @@ const parser = new Parser();
 
 /**
  * Fetches news from all registered RSS feeds and formats them.
- * @returns Formatted news data and a list of sources that failed to fetch.
+ * Throws an error if any of the RSS feeds fail to parse.
+ * @returns Formatted news data.
  */
 async function fetchAllNews() {
-  try {
-    const { newsSources } = await readDb();
-    if (newsSources.length === 0) {
-      console.warn("No news sources configured.");
-      return { news: [], failedSources: [] };
-    }
-
-    const allNewsPromises = newsSources.map(source => parser.parseURL(source.url));
-    const results = await Promise.allSettled(allNewsPromises);
-
-    const allNewsItems: any[] = [];
-    const failedSources: { name: string; url: string }[] = [];
-
-    results.forEach((result, index) => {
-      const source = newsSources[index];
-      if (result.status === 'fulfilled') {
-        const feed = result.value;
-        const newsItems = feed.items.slice(0, 5).map(item => ({
-          title: item.title || 'No Title',
-          url: item.link || '#',
-          snippet: item.contentSnippet?.substring(0, 100) + '...' || 'No snippet available.',
-        }));
-        allNewsItems.push(...newsItems);
-      } else {
-        console.error(`Failed to fetch RSS feed from ${source.name} (${source.url}):`, result.reason);
-        failedSources.push({ name: source.name, url: source.url });
-      }
-    });
-
-    return { news: allNewsItems, failedSources };
-  } catch (error) {
-    console.error('Failed to fetch news from DB or RSS feeds:', error);
-    throw new Error('Failed to fetch news.');
+  const { newsSources } = await readDb();
+  if (newsSources.length === 0) {
+    console.warn("No news sources configured.");
+    return { news: [] };
   }
+
+  const allNewsItems: any[] = [];
+
+  for (const source of newsSources) {
+    try {
+      const feed = await parser.parseURL(source.url);
+      const newsItems = feed.items.slice(0, 5).map(item => ({
+        title: item.title || 'No Title',
+        url: item.link || '#',
+        snippet: item.contentSnippet?.substring(0, 100) + '...' || 'No snippet available.',
+      }));
+      allNewsItems.push(...newsItems);
+    } catch (error) {
+      console.error(`Failed to fetch RSS feed from ${source.name} (${source.url}):`, error);
+      // Throw an error to stop the entire ETL process
+      throw new Error(`Failed to fetch news from "${source.name}" (${source.url}). Please check if the URL is a valid RSS feed.`);
+    }
+  }
+
+  return { news: allNewsItems };
 }
 
 
@@ -258,7 +250,8 @@ app.post('/api/run-etl', async (req, res) => {
 
   } catch (error) {
     console.error('Error during ETL process:', error);
-    res.status(500).json({ error: 'An error occurred during the ETL process.' });
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during the ETL process.';
+    res.status(500).json({ error: errorMessage });
   }
 });
 
