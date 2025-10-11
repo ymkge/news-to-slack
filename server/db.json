@@ -1,9 +1,9 @@
 {
   "newsSources": [
     {
-      "id": "24221c35-af3e-4138-9585-47f80e85ec28",
-      "name": "NHKニュース(総合)",
-      "url": "https://www.nhk.or.jp/rss/news/cat0.xml"
+      "id": "8b0ea995-af20-4c5f-b28f-eeeec7b11c61",
+      "name": "yahoo 経済",
+      "url": "https://news.yahoo.co.jp/rss/topics/business.xml"
     }
   ]
 }

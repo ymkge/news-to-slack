@@ -43,6 +43,12 @@ router.post('/', async (req, res) => {
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         const model = "gemini-2.5-flash";
 
+        // --- Check for configured news sources ---
+        const { newsSources } = await readDb();
+        if (newsSources.length === 0) {
+            throw new Error('No news sources are configured. Please add at least one RSS feed to proceed.');
+        }
+
         // === Part 1: Initial call to get the first function call (YahooNewsAPI) ===
         const tools = [{ functionDeclarations: [yahooNewsApiTool, slackPosterTool] }];
         
@@ -65,7 +71,6 @@ router.post('/', async (req, res) => {
         const newsData = await fetchAllNews();
     
         // If sources are configured but no articles were fetched, it's an error.
-        const { newsSources } = await readDb();
         if (newsSources.length > 0 && (!newsData || newsData.news.length === 0)) {
             throw new Error('No news articles could be fetched from the configured sources. Please check the RSS feed URLs and ensure they are not empty or invalid.');
         }
