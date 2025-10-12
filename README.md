@@ -10,16 +10,19 @@ AI Studioでこのアプリを見る: https://ai.studio/apps/drive/11Vwu7xVOHsMm
 
 ## 概要
 
-「Run ETL Process」ボタンをクリックすると、以下の処理が実行され、各ステップの進捗と結果がリアルタイムで画面に表示されます。
+「Generate Summary」ボタンをクリックすると、以下の処理が実行され、各ステップの進捗と結果がリアルタイムで画面に表示されます。また、生成された要約はSlackに投稿する前に確認・編集が可能です。
+さらに、ETLプロセスを定期的に自動実行するスケジュール機能も追加されました。
 
 1.  **Extract (抽出)**: **登録されたRSSフィードからニュース記事を取得**します。
 2.  **Transform (変換)**: Google Gemini API を利用して、取得したニュース記事を分析し、「トピック分類」と「内容の要約」を生成します。
-3.  **Load (書き出し)**: 分析結果をSlackのメッセージ形式に整形し、**実際にSlackチャンネルに投稿**します。
+3.  **Review (確認)**: 生成された要約をSlackに投稿する前に、内容を確認・編集できます。
+4.  **Load (書き出し)**: 分析結果をSlackのメッセージ形式に整形し、**実際にSlackチャンネルに投稿**します。
 
 ## 機能
 
 -   **ニュースソース管理**: Web UIからRSSフィードのURLを登録・削除できます。
--   **ETLプロセス実行**: 登録されたRSSフィードからニュースを取得し、Gemini AIで処理後、Slackに投稿します。
+-   **要約生成とSlack投稿**: 登録されたRSSフィードからニュースを取得し、Gemini AIで処理後、**Slack投稿前に要約内容をプレビュー・編集**し、Slackに投稿します。
+-   **定期実行スケジューラー**: ETLプロセスを「毎日朝9時」や「1時間ごと」のように、**指定したスケジュールで自動実行**できます。
 -   **エラーハンドリング**: 無効なRSSフィードが登録されている場合、Extract処理でエラーを検出し、処理を中断して画面にエラーメッセージを表示します。
 
 ## 処理フロー
@@ -28,20 +31,28 @@ AI Studioでこのアプリを見る: https://ai.studio/apps/drive/11Vwu7xVOHsMm
 graph TD
     subgraph "ユーザー操作"
         A("「Manage News Sources」でRSSフィードを登録")
-        B("「Run ETL Process」ボタンをクリック")
+        B("「Generate Summary」ボタンをクリック")
+        C("「Review & Load」で要約を編集・確認")
+        D("「Post to Slack」ボタンをクリック")
+        E("「ETL Schedule」でスケジュールを設定")
     end
 
-    subgraph "ETLプロセス"
-        C["1. Extract (抽出)<br>登録されたRSSフィードから記事を取得"]
-        D["2. Transform (変換)<br>Gemini AIで記事を分析・要約"]
-        E["3. Load (書き出し)<br>Slackメッセージを生成・投稿"]
+    subgraph "ETLプロセス (手動実行)"
+        B --> F[1. Extract<br>RSSフィードから記事を取得]
+        F --> G[2. Transform<br>Gemini AIで記事を分析・要約]
+        G --> C
+        C --> D
+        D --> H[3. Load<br>Slackメッセージを生成・投稿]
     end
 
-    subgraph "結果"
-        F("UIに進捗と結果を表示")
+    subgraph "ETLプロセス (自動実行)"
+        E -- スケジュール時刻 --> I[1. Extract<br>RSSフィードから記事を取得]
+        I --> J[2. Transform<br>Gemini AIで記事を分析・要約]
+        J --> K[3. Load<br>Slackメッセージを生成・投稿]
     end
 
-    A --> B --> C --> D --> E --> F
+    H --> L(UIに進捗と結果を表示)
+    K --> L
 ```
 
 ## 主な使用技術
@@ -50,7 +61,7 @@ graph TD
 -   **バックエンド**: Node.js (Express), TypeScript
 -   **ビルドツール**: Vite
 -   **AI**: Google Gemini API (`@google/genai`)
--   **UI**: Tailwind CSS
+-   **UI**: Tailwind CSS (CDN)
 
 ## ローカルでの実行方法
 
@@ -99,43 +110,6 @@ graph TD
     ```
     **注意**: バックエンドの `npm run dev` コマンドは、`tsconfig-paths` を使用するため、`nodemon --exec ts-node -r tsconfig-paths/register src/index.ts` となります。
 
-4.  ブラウザで `http://localhost:5173` （またはターミナル1に表示されたアドレス）にアクセスすると、アプリケーションが表示されます。
+4.  ブラウザで `http://localhost:3000` （またはターミナル1に表示されたアドレス）にアクセスすると、アプリケーションが表示されます。
 
 ---
-
-## 開発メモ (Development Memo)
-
-開発の進捗と計画を記録するためのメモです。
-
-### 完了したタスク (2025-10-11)
-
--   **ニュースソース管理機能の追加**: Web UIからRSSフィードのURLを登録・削除できるようになりました。
--   **UI改善**: 「Add Source」ボタンの視認性を向上させました。
--   **エラーハンドリング強化**: 無効なRSSフィードが登録された場合、Extract処理でエラーを検出し、処理を中断して画面にエラーメッセージを表示するようになりました。
--   **コードのリファクタリング**: 
-    -   サーバーサイドのロジックを `services` と `routes` ディレクトリに分割し、`index.ts` をクリーンにしました。
-    -   フロントエンドのAPI呼び出しロジックを `services/newsSourceService.ts` に分離しました。
-    -   サーバーとフロントエンドで重複していた型定義をプロジェクトルートの `types.ts` に統合し、`tsconfig.json` の `paths` エイリアスを使って参照するようにしました。
-
-
-### 完了したタスク (2025-10-10)
-
-- **ETL処理のバックエンドへの移設:**
-  - `services/geminiService.ts` で行われていたGemini APIの呼び出し処理を、`server/src/index.ts` の `/api/run-etl` エンドポイントに完全に移設しました。
-  - これにより、APIキーがフロントエンドから漏洩するリスクがなくなり、セキュリティが向上しました。
-- **フロントエンドのAPI呼び出し修正:**
-  - `services/geminiService.ts` を修正し、バックエンドの `/api/run-etl` を呼び出すように変更しました。
-- **Extract処理の動的化:**
-  - Yahoo!ニュースのRSSフィードから最新のニュースを動的に取得するように `server/src/index.ts` を修正しました。
-- **Load処理の実際のSlack投稿化:**
-  - Geminiが生成したメッセージを、設定されたSlack Webhook URLへ実際に投稿するように `server/src/index.ts` を修正しました。
-- **ドキュメント更新:**
-  - ローカルでの実行方法（`README.md`）を、現在のフロントエンド＋バックエンドの構成に合わせて更新しました。
-- **コードのリファクタリング:**
-  - `server/src/constants.ts` から不要なモックデータを削除しました。
-  - `server/src/index.ts` および `services/geminiService.ts` の冗長なログやコメントを整理し、コードを簡潔にしました。
-
-### 完了したタスク (2025-10-09)
-
-- **バックエンドサーバーの導入:**
-  - セキュリティ強化と将来の機能拡張のため、Node.js (Express + TypeScript) を使用したバックエンドサーバーの雛形を `server` ディレクトリに構築しました。
