@@ -4,6 +4,8 @@ import cors from 'cors';
 
 import newsRoutes from './routes/news';
 import etlRoutes from './routes/etl';
+import scheduleRoutes from './routes/schedule'; // Import new schedule routes
+import { initializeScheduler } from './services/schedule.service'; // Import scheduler initializer
 
 dotenv.config();
 
@@ -20,7 +22,16 @@ app.get('/api', (req, res) => {
 
 app.use('/api/news-sources', newsRoutes);
 app.use('/api/run-etl', etlRoutes);
+app.use('/api/schedule', scheduleRoutes); // Use new schedule routes
+
+// --- Error Handling ---
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
+});
 
 app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);
+  // Initialize the scheduler when the server starts
+  initializeScheduler();
 });

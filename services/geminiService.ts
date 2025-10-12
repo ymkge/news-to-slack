@@ -1,44 +1,40 @@
-import { EtlStep, ProcessStatus } from '../types';
-
-const BACKEND_URL = 'http://localhost:3001';
-
-type ProgressCallback = (step: EtlStep, status: ProcessStatus, data?: any) => void;
+const API_BASE_URL = 'http://localhost:3001/api/etl';
 
 /**
- * Runs the entire ETL process by making a single call to the backend API.
- * The backend now orchestrates the Gemini API calls.
- * @param progressCallback - A function to report the progress of each ETL step.
+ * Calls the backend to perform the Extract and Transform steps.
+ * @returns The result containing extracted data and the generated summary.
  */
-export const runEtlProcess = async (progressCallback: ProgressCallback) => {
-  try {
-    progressCallback('extract', 'in-progress');
+export async function generateSummary() {
+  const response = await fetch(`${API_BASE_URL}/generate-summary`, {
+    method: 'POST',
+  });
 
-    const response = await fetch(`${BACKEND_URL}/api/run-etl`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `Request failed with status ${response.status}`);
-    }
-
-    const results = await response.json();
-
-    progressCallback('extract', 'completed', results.extract);
-
-    progressCallback('transform', 'in-progress');
-    await new Promise(resolve => setTimeout(resolve, 300)); // Simulate delay for UX
-    progressCallback('transform', 'completed', results.transform);
-
-    progressCallback('load', 'in-progress');
-    await new Promise(resolve => setTimeout(resolve, 300)); // Simulate delay for UX
-    progressCallback('load', 'completed', results.load);
-
-  } catch (error) {
-    console.error('An error occurred during the ETL process:', error);
-    throw error;
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Failed to generate summary with no error details.' }));
+    throw new Error(errorData.error || 'Failed to generate summary');
   }
-};
+
+  return response.json();
+}
+
+/**
+ * Calls the backend to post the (potentially edited) summary to Slack.
+ * @param summary The final summary text to post.
+ * @returns The confirmation from the backend.
+ */
+export async function postSummary(summary: string) {
+  const response = await fetch(`${API_BASE_URL}/post-summary`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ summary }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Failed to post summary with no error details.' }));
+    throw new Error(errorData.error || 'Failed to post summary');
+  }
+
+  return response.json();
+}

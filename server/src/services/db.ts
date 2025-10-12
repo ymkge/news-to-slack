@@ -1,24 +1,33 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { NewsSource } from '@root/types';
+import { DbData } from '@root/types';
 
 const DB_PATH = path.join(__dirname, '..', '..', 'db.json');
 
-export async function readDb(): Promise<{ newsSources: NewsSource[] }> {
+const defaultDb: DbData = {
+  newsSources: [],
+  schedule: { cron: '', isEnabled: false },
+};
+
+export async function readDb(): Promise<DbData> {
   try {
     const data = await fs.readFile(DB_PATH, 'utf-8');
-    return JSON.parse(data);
+    const parsedData = JSON.parse(data);
+    // Ensure schedule object exists
+    if (!parsedData.schedule) {
+      parsedData.schedule = defaultDb.schedule;
+    }
+    return parsedData;
   } catch (e) {
-    // If file doesn't exist, return default structure
     if (typeof e === 'object' && e !== null && 'code' in e && e.code === 'ENOENT') {
-      return { newsSources: [] };
+      return defaultDb;
     }
     console.error('Failed to read from DB:', e);
     throw e;
   }
 }
 
-export async function writeDb(data: { newsSources: NewsSource[] }) {
+export async function writeDb(data: DbData): Promise<void> {
   try {
     await fs.writeFile(DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
   } catch (error) {

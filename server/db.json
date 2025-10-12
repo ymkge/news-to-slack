@@ -5,5 +5,9 @@
       "name": "yahoo 経済",
       "url": "https://news.yahoo.co.jp/rss/topics/business.xml"
     }
-  ]
+  ],
+  "schedule": {
+    "cron": "",
+    "isEnabled": false
+  }
 }

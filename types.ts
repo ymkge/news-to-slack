@@ -1,20 +1,26 @@
+export type ProcessStatus = 'pending' | 'in-progress' | 'completed' | 'error' | 'success';
 
-export type ProcessStatus = 'pending' | 'in-progress' | 'completed' | 'error';
-
-export type EtlStep = 'extract' | 'transform' | 'load';
+export type EtlStep = 'extract' | 'transform' | 'review' | 'load';
 
 export interface NewsArticle {
   title: string;
-  url: string;
-  snippet: string;
-}
-
-export interface MockApiResponse {
-  news: NewsArticle[];
+  link: string;
+  isoDate: string;
+  snippet?: string;
 }
 
 export interface NewsSource {
   id: string;
   name: string;
-  url:string;
+  url: string;
+}
+
+export interface Schedule {
+  cron: string;
+  isEnabled: boolean;
+}
+
+export interface DbData {
+  newsSources: NewsSource[];
+  schedule: Schedule;
 }

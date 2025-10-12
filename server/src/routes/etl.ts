@@ -1,130 +1,51 @@
 import express from 'express';
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { SYSTEM_INSTRUCTION, USER_PROMPT, yahooNewsApiTool, slackPosterTool } from '../constants';
-import { fetchAllNews } from '../services/news.service';
-import { readDb } from '../services/db';
+import { runEtlProcess, generateSummary, postToSlack } from '../services/etl.service';
 
 const router = express.Router();
 
-async function postToSlack(message: string) {
-    const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
-    if (!SLACK_WEBHOOK_URL) {
-      console.warn('SLACK_WEBHOOK_URL is not set. Skipping actual Slack post.');
-      return;
-    }
-  
+// --- New endpoints for interactive UI ---
+
+// POST /api/etl/generate-summary - Step 1 & 2: Extract and Transform
+router.post('/generate-summary', async (req, res) => {
     try {
-      const response = await fetch(SLACK_WEBHOOK_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text: message }),
-      });
-  
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Failed to post to Slack: ${response.status} - ${errorText}`);
-        throw new Error(`Failed to post to Slack: ${response.status}`);
-      }
-      console.log('Message successfully posted to Slack.');
+        const result = await generateSummary();
+        res.json(result);
     } catch (error) {
-      console.error('Error posting to Slack:', error);
-      throw new Error('Error posting to Slack.');
+        console.error('[ETL Generate Summary Error]', error);
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        res.status(500).json({ error: errorMessage });
     }
-  }
+});
 
-// POST /api/run-etl
-router.post('/', async (req, res) => {
+// POST /api/etl/post-summary - Step 3: Load
+router.post('/post-summary', async (req, res) => {
+    const { summary } = req.body;
+    if (typeof summary !== 'string' || !summary) {
+        return res.status(400).json({ error: 'Summary must be a non-empty string.' });
+    }
     try {
-        if (!process.env.GEMINI_API_KEY) {
-            throw new Error("GEMINI_API_KEY environment variable is not set.");
-        }
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const model = "gemini-2.5-flash";
+        const result = await postToSlack(summary);
+        res.json({ message: result, summary });
+    } catch (error) {
+        console.error('[ETL Post Summary Error]', error);
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        res.status(500).json({ error: errorMessage });
+    }
+});
 
-        // --- Check for configured news sources ---
-        const { newsSources } = await readDb();
-        if (newsSources.length === 0) {
-            throw new Error('No news sources are configured. Please add at least one RSS feed to proceed.');
-        }
 
-        // === Part 1: Initial call to get the first function call (YahooNewsAPI) ===
-        const tools = [{ functionDeclarations: [yahooNewsApiTool, slackPosterTool] }];
-        
-        let response: GenerateContentResponse = await ai.models.generateContent({
-          model,
-          contents: { role: 'user', parts: [{ text: USER_PROMPT }] },
-          config: {
-              systemInstruction: { role: 'model', parts: [{ text: SYSTEM_INSTRUCTION }] },
-              tools,
-          },
-        });
-    
-        const firstFunctionCall = response.functionCalls?.[0];
-        if (!firstFunctionCall || firstFunctionCall.name !== 'YahooNewsAPI') {
-          console.error("Error: Expected a function call to YahooNewsAPI.", response);
-          return res.status(500).json({ error: "Expected a function call to YahooNewsAPI, but didn't receive one." });
-        }
-    
-        // === Part 2: Fetch real news and send data back to the model ===
-        const newsData = await fetchAllNews();
-    
-        // If sources are configured but no articles were fetched, it's an error.
-        if (newsSources.length > 0 && (!newsData || newsData.news.length === 0)) {
-            throw new Error('No news articles could be fetched from the configured sources. Please check the RSS feed URLs and ensure they are not empty or invalid.');
-        }
-        
-        const functionResponsePart = {
-            functionResponse: {
-              name: 'YahooNewsAPI',
-              response: {
-                content: JSON.stringify(newsData),
-              },
-            },
-          };
-          
-        const chatHistory = [
-            { role: 'user', parts: [{ text: USER_PROMPT }] },
-            { role: 'model', parts: [{ functionCall: firstFunctionCall }] },
-        ];
-    
-        response = await ai.models.generateContent({
-          model,
-          contents: [ ...chatHistory, { role: 'function', parts: [ functionResponsePart ] }],
-          config: {
-              systemInstruction: { role: 'model', parts: [{ text: SYSTEM_INSTRUCTION }] },
-              tools,
-          },
-        });
-    
-        const secondFunctionCall = response.functionCalls?.[0];
-        if (!secondFunctionCall || secondFunctionCall.name !== 'SlackPoster') {
-          console.error("Error: Expected a function call to SlackPoster, but didn't receive one.", response);
-          return res.status(500).json({ error: "Expected a function call to SlackPoster, but didn't receive one." });
-        }
-    
-        // === Part 3: Extract final message and post to Slack ===
-        const slackMessage = secondFunctionCall.args?.message;
-        if (typeof slackMessage !== 'string' || !slackMessage) {
-          console.error("Error: Slack message was not generated by the model or is not a string.");
-          return res.status(500).json({ error: "Slack message was not generated by the model or is not a string." });
-        }
-        await postToSlack(slackMessage);
-    
-        res.json({
-          extract: newsData,
-          transform: {
-            description: "Gemini has analyzed the news and generated the final Slack message.",
-            functionCall: secondFunctionCall
-          },
-          load: slackMessage,
-        });
-    
-      } catch (error) {
+// --- Endpoint for scheduled (non-interactive) execution ---
+
+// POST /api/etl/run-full-process - Runs all steps sequentially
+router.post('/run-full-process', async (req, res) => {
+    try {
+        const result = await runEtlProcess();
+        res.json(result);
+    } catch (error) {
+        console.error('[ETL Full Process Error]', error);
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during the ETL process.';
         res.status(500).json({ error: errorMessage });
-      }
+    }
 });
 
 export default router;
