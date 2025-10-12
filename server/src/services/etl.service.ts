@@ -97,11 +97,6 @@ export async function generateSummary() {
       },
     });
 
-    // --- DEBUG LOGGING ---
-    console.log('--- Gemini Response (Part 2) ---');
-    console.log(JSON.stringify(response, null, 2));
-    // --- END DEBUG LOGGING ---
-
     const secondFunctionCall = response.candidates?.[0]?.content?.parts?.[0]?.functionCall;
     if (!secondFunctionCall || secondFunctionCall.name !== 'SlackPoster') {
       console.error("Error: Expected a function call to SlackPoster, but didn't receive one.");
