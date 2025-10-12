@@ -42,6 +42,13 @@ const statusConfig = {
     textColor: 'text-red-400',
     label: 'Error',
   },
+  success: {
+    icon: <CheckCircleIcon className="h-6 w-6 text-green-400" />,
+    borderColor: 'border-green-500',
+    bgColor: 'bg-green-900/30',
+    textColor: 'text-green-400',
+    label: 'Success',
+  },
 };
 
 const ProcessStepCard: React.FC<ProcessStepCardProps> = ({

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LoadIcon, SendIcon, RefreshCwIcon } from './icons';
 import { ProcessStatus } from '../types';
 
@@ -13,6 +13,10 @@ interface Props {
 const ReviewAndLoadCard: React.FC<Props> = ({ initialSummary, status, onPost, onRegenerate, finalPostResult }) => {
   const [summary, setSummary] = useState(initialSummary);
   const [isPosting, setIsPosting] = useState(false);
+
+  useEffect(() => {
+    setSummary(initialSummary);
+  }, [initialSummary]);
 
   const handlePost = async () => {
     setIsPosting(true);

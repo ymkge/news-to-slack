@@ -21,7 +21,7 @@ app.get('/api', (req, res) => {
 });
 
 app.use('/api/news-sources', newsRoutes);
-app.use('/api/run-etl', etlRoutes);
+app.use('/api/etl', etlRoutes); // Use new schedule routes
 app.use('/api/schedule', scheduleRoutes); // Use new schedule routes
 
 // --- Error Handling ---
