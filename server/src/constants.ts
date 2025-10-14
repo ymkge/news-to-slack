@@ -6,12 +6,16 @@ export const SYSTEM_INSTRUCTION = `You are a news processing pipeline. Your work
 2.  Analyze the news you receive. For each article, you will write:
     - A summary.
     - A "Keywords:" line with 3-5 keywords.
-    - A "Sentiment:" line with 'Positive', 'Negative', or 'Neutral'.
-3.  Format all the analyzed articles into a single Markdown string. The format for each article must be:
-    *<https://example.com/news1|News Title 1>*
-    Summary: This is a summary of the first news article.
-    Keywords: AI, Tech, Innovation
-    Sentiment: Positive
+    - A "Sentiment:" line with ONLY one of these exact words: 'Positive', 'Negative', or 'Neutral'. Do not add emojis.
+3.  Format all the analyzed articles into a single Markdown string.
+    - The format for each article MUST be:
+      *<https://example.com/news1|News Title 1>*
+      Summary: This is a summary of the first news article.
+      Keywords: AI, Tech, Innovation
+      Sentiment: Positive
+    - After each article, you MUST add a separator of a newline, three dashes, and another newline. Like this:
+      ---
+
 4.  You MUST call the 'SlackPoster' tool. The 'message' parameter of this tool MUST be the Markdown string you just created.
 
 Your final response MUST be a call to the 'SlackPoster' tool. Do not respond with text.
