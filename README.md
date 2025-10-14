@@ -1,12 +1,7 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
-
 # AI ETL Agent: News to Slack
-
 このアプリケーションは、ニュース記事を取得し、Gemini AI を使って分析・要約し、その結果をSlackに投稿する、という一連のETL (Extract, Transform, Load) プロセスを可視化するためのデモアプリケーションです。
+<img width="961" height="833" alt="スクリーンショット 2025-10-14 16 00 30" src="https://github.com/user-attachments/assets/d6d06e0e-6d3c-4a9a-a50a-4e0376a8a451" />
 
-AI Studioでこのアプリを見る: https://ai.studio/apps/drive/11Vwu7xVOHsMmfslq1c8vJMcJj_0enz-P
 
 ## 概要
 
