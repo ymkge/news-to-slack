@@ -17,9 +17,9 @@ export async function postToSlack(message: string): Promise<string> {
 
     // Replace sentiment text with emojis
     const formattedMessage = message
-      .replace(/Sentiment: Positive/g, 'Sentiment: 😊 Positive')
-      .replace(/Sentiment: Negative/g, 'Sentiment: 😠 Negative')
-      .replace(/Sentiment: Neutral/g, 'Sentiment: 😐 Neutral');
+      .replace(/感情: Positive/g, '感情: 😊 Positive')
+      .replace(/感情: Negative/g, '感情: 😠 Negative')
+      .replace(/感情: Neutral/g, '感情: 😐 Neutral');
   
     try {
       const response = await fetch(SLACK_WEBHOOK_URL, {
