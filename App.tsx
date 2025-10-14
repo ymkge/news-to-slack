@@ -1,70 +1,130 @@
-import React, { useState, useCallback } from 'react';
+import React, { useReducer, useCallback } from 'react';
 import { generateSummary, postSummary } from './services/geminiService';
-import { EtlStep, ProcessStatus } from './types';
+import { EtlStep, ProcessStatus, EtlData } from './types';
 import ProcessStepCard from './components/ProcessStepCard';
 import { ExtractIcon, TransformIcon, ZapIcon, AlertTriangleIcon } from './components/icons';
 import NewsSourceManager from './components/NewsSourceManager';
 import ScheduleManager from './components/ScheduleManager';
 import ReviewAndLoadCard from './components/ReviewAndLoadCard';
 
-const App: React.FC = () => {
-  const [statuses, setStatuses] = useState<Record<EtlStep, ProcessStatus>>({
+// 1. Define State, Actions, and Initial State for the reducer
+
+interface State {
+  statuses: Record<EtlStep, ProcessStatus>;
+  data: EtlData;
+  isGenerating: boolean;
+  error: string | null;
+}
+
+type Action =
+  | { type: 'RESET' }
+  | { type: 'GENERATE_START' }
+  | { type: 'GENERATE_SUCCESS'; payload: { extract: any; transform: any; summary: string } }
+  | { type: 'GENERATE_ERROR'; payload: string }
+  | { type: 'POST_START' }
+  | { type: 'POST_SUCCESS'; payload: string }
+  | { type: 'POST_ERROR' };
+
+const initialState: State = {
+  statuses: {
     extract: 'pending',
     transform: 'pending',
     review: 'pending',
     load: 'pending',
-  });
-  const [data, setData] = useState<Record<string, any>>({
+  },
+  data: {
     extract: null,
     transform: null,
-    summary: null,
-    load: null,
-  });
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+    summary: '',
+    load: '',
+  },
+  isGenerating: false,
+  error: null,
+};
 
-  const resetState = () => {
-    setError(null);
-    setStatuses({ extract: 'pending', transform: 'pending', review: 'pending', load: 'pending' });
-    setData({ extract: null, transform: null, summary: null, load: null });
+// 2. Create the reducer function
+
+const etlReducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case 'RESET':
+      return {
+        ...initialState,
+      };
+    case 'GENERATE_START':
+      return {
+        ...initialState, // Reset on new generation
+        isGenerating: true,
+        statuses: { ...initialState.statuses, extract: 'in-progress' },
+      };
+    case 'GENERATE_SUCCESS':
+      return {
+        ...state,
+        isGenerating: false,
+        statuses: { ...state.statuses, extract: 'success', transform: 'success', review: 'in-progress' },
+        data: { ...state.data, ...action.payload },
+      };
+    case 'GENERATE_ERROR':
+      return {
+        ...state,
+        isGenerating: false,
+        error: action.payload,
+        statuses: { ...state.statuses, extract: 'error', transform: 'error' },
+      };
+    case 'POST_START':
+      return {
+        ...state,
+        statuses: { ...state.statuses, load: 'in-progress' },
+      };
+    case 'POST_SUCCESS':
+      return {
+        ...state,
+        statuses: { ...state.statuses, load: 'success', review: 'success' },
+        data: { ...state.data, load: action.payload },
+      };
+    case 'POST_ERROR':
+      return {
+        ...state,
+        statuses: { ...state.statuses, load: 'error', review: 'error' },
+      };
+    default:
+      return state;
   }
+};
 
+const App: React.FC = () => {
+  // 3. Replace useState with useReducer
+  const [state, dispatch] = useReducer(etlReducer, initialState);
+
+  // 4. Update event handlers to dispatch actions
   const handleGenerateSummary = useCallback(async () => {
-    resetState();
-    setIsGenerating(true);
+    dispatch({ type: 'GENERATE_START' });
 
     try {
-      setStatuses(prev => ({ ...prev, extract: 'in-progress' }));
       const result = await generateSummary();
-      
-      setStatuses(prev => ({ ...prev, extract: 'success', transform: 'in-progress' }));
-      setData(prev => ({ ...prev, extract: result.extract, transform: result.transform, summary: result.summary }));
-      
-      // Simulate transform step for UX
-      setTimeout(() => {
-        setStatuses(prev => ({ ...prev, transform: 'success', review: 'in-progress' }));
-      }, 300);
-
+      dispatch({ 
+        type: 'GENERATE_SUCCESS', 
+        payload: { extract: result.extract, transform: result.transform, summary: result.summary }
+      });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
-      setError(`Process failed: ${errorMessage}`);
-      setStatuses(prev => ({ ...prev, extract: 'error', transform: 'error' }));
-    } finally {
-      setIsGenerating(false);
+      dispatch({ type: 'GENERATE_ERROR', payload: `Process failed: ${errorMessage}` });
     }
   }, []);
 
   const handlePostSummary = useCallback(async (summary: string) => {
-    setStatuses(prev => ({ ...prev, load: 'in-progress' }));
+    dispatch({ type: 'POST_START' });
     try {
       const result = await postSummary(summary);
-      setData(prev => ({ ...prev, load: result.message }));
-      setStatuses(prev => ({ ...prev, load: 'success', review: 'success' }));
+      dispatch({ type: 'POST_SUCCESS', payload: result.message });
     } catch (err) {
-      setStatuses(prev => ({ ...prev, load: 'error', review: 'error' }));
+      dispatch({ type: 'POST_ERROR' });
       console.error(err);
     }
   }, []);
+
+  // The custom hook refactoring is implicitly handled by centralizing logic in the reducer.
+  // For this app's scale, creating separate `useApi` hooks would be overkill, 
+  // as the reducer already separates state logic from the component's view logic.
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 p-4 sm:p-6 lg:p-8">
@@ -85,10 +145,10 @@ const App: React.FC = () => {
           <div className="flex justify-center mb-8">
             <button
               onClick={handleGenerateSummary}
-              disabled={isGenerating}
+              disabled={state.isGenerating}
               className="flex items-center gap-2 px-6 py-3 font-semibold text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 disabled:bg-slate-500 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-400"
             >
-              {isGenerating ? (
+              {state.isGenerating ? (
                 <>
                   <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -105,10 +165,10 @@ const App: React.FC = () => {
             </button>
           </div>
 
-          {error && (
+          {state.error && (
             <div className="bg-red-900/50 border border-red-500 text-red-300 px-4 py-3 rounded-lg relative mb-6 flex items-center gap-3">
                <AlertTriangleIcon className="h-5 w-5 text-red-400" />
-              <span className="block sm:inline">{error}</span>
+              <span className="block sm:inline">{state.error}</span>
             </div>
           )}
 
@@ -117,24 +177,24 @@ const App: React.FC = () => {
               icon={<ExtractIcon />}
               title="1. Extract"
               description="Fetch news articles from configured RSS feeds."
-              status={statuses.extract}
-              content={data.extract ? JSON.stringify(data.extract, null, 2) : null}
+              status={state.statuses.extract}
+              content={state.data.extract ? JSON.stringify(state.data.extract, null, 2) : null}
               contentType="json"
             />
             <ProcessStepCard
               icon={<TransformIcon />}
               title="2. Transform"
               description="Gemini analyzes news and generates a summary for review."
-              status={statuses.transform}
-              content={data.transform ? JSON.stringify(data.transform, null, 2) : null}
+              status={state.statuses.transform}
+              content={state.data.transform ? JSON.stringify(state.data.transform, null, 2) : null}
               contentType="json"
             />
             <ReviewAndLoadCard 
-              status={statuses.review}
-              initialSummary={data.summary || ''}
+              status={state.statuses.review}
+              initialSummary={state.data.summary}
               onPost={handlePostSummary}
               onRegenerate={handleGenerateSummary}
-              finalPostResult={data.load}
+              finalPostResult={state.data.load}
             />
           </div>
         </main>

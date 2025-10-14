@@ -24,3 +24,33 @@ export interface DbData {
   newsSources: NewsSource[];
   schedule: Schedule;
 }
+
+// --- Refactoring Types ---
+
+/**
+ * Represents the data structure for the 'transform' step of the ETL process.
+ */
+export interface TransformData {
+  description: string;
+  // A simplified representation of the FunctionCall from @google/genai
+  functionCall: {
+    name: string;
+    args: { [key: string]: any };
+  };
+}
+
+/**
+ * Represents the complete data object for the ETL process managed in the frontend.
+ */
+export interface EtlData {
+  extract: {
+    news: {
+      title: string;
+      url: string;
+      snippet: string;
+    }[];
+  } | null;
+  transform: TransformData | null;
+  summary: string;
+  load: string; // Holds the final success/error message from postToSlack
+}
