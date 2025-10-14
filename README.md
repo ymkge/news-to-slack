@@ -2,7 +2,7 @@
 
 このアプリケーションは、ニュース記事を取得し、Gemini AI を使って分析・要約し、その結果をSlackに投稿する、という一連のETL (Extract, Transform, Load) プロセスを可視化するためのデモアプリケーションです。
 
-**[ここに新しいUIのスクリーンショットを挿入]**
+<img width="940" height="799" alt="スクリーンショット 2025-10-14 17 03 33" src="https://github.com/user-attachments/assets/b949991f-11aa-4748-b48e-448b34d1fbd0" />
 
 ## 概要
 
