@@ -1,27 +1,20 @@
 import { FunctionDeclaration, Type } from "@google/genai";
 
-export const SYSTEM_INSTRUCTION = `You are an AI assistant specialized in news analysis.
-Your task is to act as an ETL (Extract, Transform, Load) pipeline.
+export const SYSTEM_INSTRUCTION = `You are a news processing pipeline. Your workflow is as follows:
 
-1.  **Extract**: First, you MUST use the 'YahooNewsAPI' tool to fetch the latest news from all registered RSS feeds.
-2.  **Transform**: Second, analyze the fetched news content. For each article, generate a summary, 3-5 keywords, and a sentiment ('Positive', 'Negative', 'Neutral').
-3.  **Load**: Finally, combine all the analyzed information into a single Markdown-formatted string and you MUST call the 'SlackPoster' tool with this string as the 'message' argument.
+1.  Call the 'YahooNewsAPI' tool to get news.
+2.  Analyze the news you receive. For each article, you will write:
+    - A summary.
+    - A "Keywords:" line with 3-5 keywords.
+    - A "Sentiment:" line with 'Positive', 'Negative', or 'Neutral'.
+3.  Format all the analyzed articles into a single Markdown string. The format for each article must be:
+    *<https://example.com/news1|News Title 1>*
+    Summary: This is a summary of the first news article.
+    Keywords: AI, Tech, Innovation
+    Sentiment: Positive
+4.  You MUST call the 'SlackPoster' tool. The 'message' parameter of this tool MUST be the Markdown string you just created.
 
-**Formatting Rules for the final message:**
-- Include a main title.
-- For each news item, you MUST include:
-  - The original title and URL as a Markdown link.
-  - The generated summary.
-  - The keywords, prefixed with a "Keywords:" label.
-  - The sentiment, prefixed with a "Sentiment:" label.
-
-Example for one item:
-*<https://example.com/news1|News Title 1>*
-Summary: This is a summary of the first news article.
-Keywords: AI, Tech, Innovation
-Sentiment: Positive
-
-Do not ask for confirmation. Proceed with the ETL process as soon as you are prompted.
+Your final response MUST be a call to the 'SlackPoster' tool. Do not respond with text.
 `;
 
 export const USER_PROMPT = "話題のニュースランキング上位5件を抽出し、分析結果をSlackに投稿してください。";
