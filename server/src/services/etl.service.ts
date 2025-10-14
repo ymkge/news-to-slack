@@ -14,6 +14,12 @@ export async function postToSlack(message: string): Promise<string> {
       console.warn('SLACK_WEBHOOK_URL is not set. Skipping actual Slack post.');
       return "Skipped: SLACK_WEBHOOK_URL not set.";
     }
+
+    // Replace sentiment text with emojis
+    const formattedMessage = message
+      .replace(/Sentiment: Positive/g, 'Sentiment: 😊 Positive')
+      .replace(/Sentiment: Negative/g, 'Sentiment: 😠 Negative')
+      .replace(/Sentiment: Neutral/g, 'Sentiment: 😐 Neutral');
   
     try {
       const response = await fetch(SLACK_WEBHOOK_URL, {
@@ -21,7 +27,7 @@ export async function postToSlack(message: string): Promise<string> {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ text: message }),
+        body: JSON.stringify({ text: formattedMessage }),
       });
   
       if (!response.ok) {
