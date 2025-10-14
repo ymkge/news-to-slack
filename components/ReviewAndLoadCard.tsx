@@ -58,7 +58,7 @@ const ReviewAndLoadCard: React.FC<Props> = ({ initialSummary, status, onPost, on
     const articleBlocks = summary.split('---').filter(block => block.trim() !== '');
     
     return articleBlocks.map(block => {
-      const titleMatch = block.match(/\*<([^|]+)\|([^>]+)>\*/);
+      const titleMatch = block.match(/<([^|]+)\|([^>]+)>/);
       const summaryMatch = block.match(/要約: ([^\n]+)/);
       const keywordsMatch = block.match(/キーワード: ([^\n]+)/);
       const sentimentMatch = block.match(/感情: ([^\n]+)/);

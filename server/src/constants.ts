@@ -8,8 +8,9 @@ export const SYSTEM_INSTRUCTION = `You are a news processing pipeline. Your work
     - A "キーワード:" line with 3-5 keywords in Japanese.
     - A "感情:" line with ONLY one of these exact words: 'Positive', 'Negative', or 'Neutral'. Do not add emojis.
 3.  Format all the analyzed articles into a single Markdown string. The entire output MUST be in Japanese.
-    - The format for each article MUST be:
-      *<https://example.com/news1|ニュースタイトル1>*
+    - For the article title, you MUST use Slack's mrkdwn format for links: '<URL|Link Text>'.
+    - The complete format for each article MUST be:
+      <https://example.com/news1|ニュースタイトル1>
       要約: これは最初のニュース記事の要約です。
       キーワード: AI, テクノロジー, イノベーション
       感情: Positive
